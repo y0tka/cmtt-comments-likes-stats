@@ -27,7 +27,19 @@ function getCommentsChunk(site, id, count, offset) {
 
 function getProfile(site, id) {
     return {
-        run: async () => fetch(`${getBaseUrl(site)}user/${id}`)
+        run: async () => {
+            let r = await fetch(`${getBaseUrl(site)}user/${id}`);
+            return await r.json();
+        }
+    };
+}
+
+function getProfileAlternative(site, id) {
+    return {
+        run: async () => {
+            let r = await fetch(`${getBaseUrl(site)}locate?url=https://${site}/u/${id}`);
+            return await r.json();
+        }
     };
 }
 
@@ -335,7 +347,7 @@ export function onClicked() {
     const site = found[2];
     const id   = found[3];
 
-    queue.addTask(getProfile(site, id))
+    getProfile(site, id).run()
         .then(profile => {
             fillProfileInfo(profile.result);
 
@@ -343,8 +355,16 @@ export function onClicked() {
         })
         .catch(e => {
             console.error(e);
-
-            errorText.innerText = `Произошла какая-то хрень: ${e.message} Если в настройках у вас профиль не скрыт, то пинайте Ширяева. А пока попробуем загрузить без профиля.`;
-            getInfo(site, id, null);
+            getProfileAlternative(site, id).run()
+                .then(profile => {
+                    console.log(profile);
+                    fillProfileInfo(profile.result.data);
+                    
+                    return getInfo(site, id, profile.result);
+                })
+                .catch(e => {
+                    errorText.innerText = `Произошла какая-то хрень: ${e.message} Если в настройках у вас профиль не скрыт, то пинайте Ширяева. А пока попробуем загрузить без профиля.`;
+                    getInfo(site, id, null);
+                })
         });
 }
